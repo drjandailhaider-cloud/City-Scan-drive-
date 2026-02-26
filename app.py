@@ -3,6 +3,7 @@ import qrcode
 import uuid
 import requests
 import io
+from twilio.rest import Client
 
 # --------------------------------------------
 # PAGE CONFIG
