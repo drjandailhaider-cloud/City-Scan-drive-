@@ -2,135 +2,94 @@ import streamlit as st
 import qrcode
 import uuid
 import io
+import json
+import os
 from twilio.rest import Client
 
 # --------------------------------------------------
-# PAGE CONFIG
+# CONFIG
 # --------------------------------------------------
-st.set_page_config(
-    page_title="CityScan AI",
-    page_icon="🚗",
-    layout="centered"
-)
+st.set_page_config(page_title="CityScan AI", page_icon="🚗")
+
+DATA_FILE = "drivers.json"
 
 # --------------------------------------------------
-# CLEAN PROFESSIONAL UI
+# LOAD DATABASE
 # --------------------------------------------------
-st.markdown("""
-<style>
-.stApp {
-    background-color: #0e1117;
-    color: white;
-}
-h1 {
-    color: #00e0ff;
-}
-.stTextInput>div>div>input {
-    background-color: #1c1f26;
-    color: white;
-    border-radius: 8px;
-}
-.stButton>button {
-    background-color: #00e0ff;
-    color: black;
-    border-radius: 8px;
-    height: 45px;
-    font-weight: bold;
-}
-.card {
-    background-color: #161b22;
-    padding: 25px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-</style>
-""", unsafe_allow_html=True)
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, "w") as f:
+        json.dump({}, f)
 
-st.title("🚗 CityScan AI")
-st.caption("Secure Smart Parking Contact System")
+with open(DATA_FILE, "r") as f:
+    drivers = json.load(f)
 
 # --------------------------------------------------
-# TWILIO CONFIG (FROM SECRETS)
+# TWILIO CONFIG
 # --------------------------------------------------
 TWILIO_SID = st.secrets.get("TWILIO_SID")
 TWILIO_AUTH = st.secrets.get("TWILIO_AUTH")
 TWILIO_NUMBER = st.secrets.get("TWILIO_NUMBER")
 
-def call_driver(driver_phone):
+def call_driver(phone):
     client = Client(TWILIO_SID, TWILIO_AUTH)
-
     call = client.calls.create(
-        to=driver_phone,
+        to=phone,
         from_=TWILIO_NUMBER,
         url="http://demo.twilio.com/docs/voice.xml"
     )
-
     return call.sid
 
 # --------------------------------------------------
-# SESSION STORAGE (TEMP DATABASE)
-# --------------------------------------------------
-if "drivers" not in st.session_state:
-    st.session_state.drivers = {}
-
-# --------------------------------------------------
-# CHECK IF QR LINK OPENED
+# CHECK QR SCAN
 # --------------------------------------------------
 query_params = st.query_params
-scanned_id = query_params.get("id")
+driver_id = query_params.get("id")
 
-if scanned_id:
-    driver = st.session_state.drivers.get(scanned_id)
+if driver_id:
+    if driver_id in drivers:
+        driver = drivers[driver_id]
 
-    if driver:
-        st.success("Driver Found")
-        st.write("Car Plate:", driver["plate"])
+        st.title("🚗 Vehicle Found")
+        st.write("Plate:", driver["plate"])
 
-        if st.button("📞 Call Driver Securely"):
+        if st.button("📞 Call Driver"):
             try:
-                call_sid = call_driver(driver["phone"])
+                sid = call_driver(driver["phone"])
                 st.success("Calling driver...")
-                st.write("Call SID:", call_sid)
+                st.write("Call SID:", sid)
             except Exception as e:
-                st.error(f"Call Failed: {e}")
+                st.error(f"Call failed: {e}")
     else:
         st.error("Driver not found.")
 
     st.stop()
 
 # --------------------------------------------------
-# REGISTRATION SECTION
+# REGISTRATION
 # --------------------------------------------------
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-
+st.title("🚗 CityScan AI")
 st.subheader("Register Your Vehicle")
 
 name = st.text_input("Driver Name")
-phone = st.text_input("Phone Number (with country code, e.g. +923001234567)")
+phone = st.text_input("Phone (+country code)")
 plate = st.text_input("Car Plate Number")
 
-generate = st.button("Generate Secure QR")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --------------------------------------------------
-# QR GENERATION
-# --------------------------------------------------
-if generate:
+if st.button("Generate QR"):
     if not name or not phone or not plate:
-        st.error("Please fill all fields.")
+        st.error("Fill all fields")
     else:
         unique_id = str(uuid.uuid4())[:8]
 
-        # Store in session (temporary DB)
-        st.session_state.drivers[unique_id] = {
+        drivers[unique_id] = {
             "name": name,
             "phone": phone,
             "plate": plate
         }
 
-        # IMPORTANT: Replace after deployment
-        APP_URL = "https://YOUR_STREAMLIT_URL.streamlit.app"
+        with open(DATA_FILE, "w") as f:
+            json.dump(drivers, f)
+
+        APP_URL = "https://YOUR_STREAMLIT_APP.streamlit.app"
 
         qr_link = f"{APP_URL}?id={unique_id}"
 
@@ -139,9 +98,6 @@ if generate:
         qr.save(buf)
         buf.seek(0)
 
-        st.success("Registration Successful!")
-        st.image(buf, caption="Scan this QR to Call Driver")
-
-        st.code(f"Secure ID: {unique_id}")
-
-        st.info("Print and place this QR inside your car.")
+        st.success("QR Generated Successfully")
+        st.image(buf)
+        st.code(qr_link)
