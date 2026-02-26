@@ -11,18 +11,40 @@ st.title("🚗 CityScan AI")
 st.caption("Secure Parking Contact System")
 
 # ---------------- TWILIO CONFIG ----------------
-TWILIO_SID = st.secrets.get("TWILIO_SID")
-TWILIO_AUTH = st.secrets.get("TWILIO_AUTH")
-TWILIO_NUMBER = st.secrets.get("TWILIO_NUMBER")
+from twilio.rest import Client
+import streamlit as st
+
+TWILIO_SID = st.secrets["TWILIO_SID"]
+TWILIO_AUTH = st.secrets["TWILIO_AUTH"]
+TWILIO_NUMBER = st.secrets["TWILIO_NUMBER"]
+
+def format_phone(phone):
+    phone = phone.replace(" ", "").replace("-", "")
+    
+    if phone.startswith("03"):
+        phone = "+92" + phone[1:]
+    
+    if not phone.startswith("+"):
+        phone = "+" + phone
+    
+    return phone
 
 def call_driver(phone):
-    client = Client(TWILIO_SID, TWILIO_AUTH)
-    call = client.calls.create(
-        to=phone,
-        from_=TWILIO_NUMBER,
-        url="http://demo.twilio.com/docs/voice.xml"
-    )
-    return call.sid
+    try:
+        client = Client(TWILIO_SID, TWILIO_AUTH)
+
+        formatted_phone = format_phone(phone)
+
+        call = client.calls.create(
+            to=formatted_phone,
+            from_=TWILIO_NUMBER,
+            twiml="<Response><Say>Parking alert. Please move your vehicle.</Say></Response>"
+        )
+
+        return call.sid
+
+    except Exception as e:
+        return str(e)
 
 # ---------------- CHECK QR OPEN ----------------
 query_params = st.query_params
