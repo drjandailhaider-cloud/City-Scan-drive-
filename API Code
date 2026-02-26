@@ -1,0 +1,6 @@
+API_URL = "https://api-inference.huggingface.co/models/face-recognition-model"
+headers = {"Authorization": "Bearer hf_dikLSFOWLBecGxNmaGRpuUjwjpqnHkwEscN"}
+
+def verify_face(image_bytes):
+    response = requests.post(API_URL, headers=headers, data=image_bytes)
+    return response.json()
