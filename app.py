@@ -62,7 +62,7 @@ API_URL = "https://api-inference.huggingface.co/models/facebook/detr-resnet-50"
 HF_TOKEN = st.secrets.get("HF_TOKEN")
 
 headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
+    "Authorization": f"Bearer {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}"
 } if HF_TOKEN else None
 
 
