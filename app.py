@@ -2,30 +2,15 @@ import streamlit as st
 import qrcode
 import uuid
 import io
-import json
-import os
 from twilio.rest import Client
+import urllib.parse
 
-# --------------------------------------------------
-# CONFIG
-# --------------------------------------------------
 st.set_page_config(page_title="CityScan AI", page_icon="🚗")
 
-DATA_FILE = "drivers.json"
+st.title("🚗 CityScan AI")
+st.caption("Secure Parking Contact System")
 
-# --------------------------------------------------
-# LOAD DATABASE
-# --------------------------------------------------
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({}, f)
-
-with open(DATA_FILE, "r") as f:
-    drivers = json.load(f)
-
-# --------------------------------------------------
-# TWILIO CONFIG
-# --------------------------------------------------
+# ---------------- TWILIO CONFIG ----------------
 TWILIO_SID = st.secrets.get("TWILIO_SID")
 TWILIO_AUTH = st.secrets.get("TWILIO_AUTH")
 TWILIO_NUMBER = st.secrets.get("TWILIO_NUMBER")
@@ -39,59 +24,43 @@ def call_driver(phone):
     )
     return call.sid
 
-# --------------------------------------------------
-# CHECK QR SCAN
-# --------------------------------------------------
+# ---------------- CHECK QR OPEN ----------------
 query_params = st.query_params
-driver_id = query_params.get("id")
 
-if driver_id:
-    if driver_id in drivers:
-        driver = drivers[driver_id]
+phone_from_url = query_params.get("phone")
+plate_from_url = query_params.get("plate")
 
-        st.title("🚗 Vehicle Found")
-        st.write("Plate:", driver["plate"])
+if phone_from_url:
+    st.success("Vehicle Found")
+    st.write("Plate:", plate_from_url)
 
-        if st.button("📞 Call Driver"):
-            try:
-                sid = call_driver(driver["phone"])
-                st.success("Calling driver...")
-                st.write("Call SID:", sid)
-            except Exception as e:
-                st.error(f"Call failed: {e}")
-    else:
-        st.error("Driver not found.")
+    if st.button("📞 Call Driver"):
+        try:
+            sid = call_driver(phone_from_url)
+            st.success("Calling driver...")
+            st.write("Call SID:", sid)
+        except Exception as e:
+            st.error(f"Call failed: {e}")
 
     st.stop()
 
-# --------------------------------------------------
-# REGISTRATION
-# --------------------------------------------------
-st.title("🚗 CityScan AI")
-st.subheader("Register Your Vehicle")
+# ---------------- REGISTRATION ----------------
+st.subheader("Register Vehicle")
 
 name = st.text_input("Driver Name")
 phone = st.text_input("Phone (+country code)")
 plate = st.text_input("Car Plate Number")
 
 if st.button("Generate QR"):
-    if not name or not phone or not plate:
+    if not phone or not plate:
         st.error("Fill all fields")
     else:
-        unique_id = str(uuid.uuid4())[:8]
+        APP_URL = "https://gzv6rzmomvmidvgqk7azpn.streamlit.app"
 
-        drivers[unique_id] = {
-            "name": name,
-            "phone": phone,
-            "plate": plate
-        }
+        encoded_phone = urllib.parse.quote(phone)
+        encoded_plate = urllib.parse.quote(plate)
 
-        with open(DATA_FILE, "w") as f:
-            json.dump(drivers, f)
-
-        APP_URL = "https://YOUR_STREAMLIT_APP.streamlit.app"
-
-        qr_link = f"{APP_URL}?id={unique_id}"
+        qr_link = f"{APP_URL}?phone={encoded_phone}&plate={encoded_plate}"
 
         qr = qrcode.make(qr_link)
         buf = io.BytesIO()
