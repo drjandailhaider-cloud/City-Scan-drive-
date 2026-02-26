@@ -13,6 +13,22 @@ st.set_page_config(
     page_icon="🚗",
     layout="centered"
 )
+# --------------------------------------------
+# TWILIO CONFIG
+# --------------------------------------------
+TWILIO_SID = st.secrets.get("TWILIO_SID")
+TWILIO_AUTH = st.secrets.get("TWILIO_AUTH")
+TWILIO_NUMBER = st.secrets.get("TWILIO_NUMBER")
+def call_driver(driver_phone):
+    client = Client(TWILIO_SID, TWILIO_AUTH)
+    
+    call = client.calls.create(
+        to=driver_phone,
+        from_=TWILIO_NUMBER,
+        url="http://demo.twilio.com/docs/voice.xml"
+    )
+    
+    return call.sid
 
 # --------------------------------------------
 # CLEAN AI UI THEME
@@ -122,11 +138,18 @@ if generate:
 # CALL SECTION (READY FOR TWILIO)
 # --------------------------------------------
 st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("Call Driver Securely")
 
-st.subheader("Call Driver (Demo Mode)")
+if st.button("Call Driver"):
+    if phone:
+        try:
+            call_sid = call_driver(phone)
+            st.success("Calling driver securely...")
+            st.write("Call SID:", call_sid)
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.error("No driver phone available.")
 
-if st.button("Call Driver Securely"):
-    st.info("Calling driver...")
-    st.success("This is demo mode. Integrate Twilio for real calling.")
 
 st.markdown("</div>", unsafe_allow_html=True)
